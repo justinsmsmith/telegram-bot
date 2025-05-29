@@ -1,0 +1,92 @@
+from telethon.sync import TelegramClient, events, Button
+import asyncio
+from datetime import datetime, timedelta
+import random
+import os
+from sqlalchemy import create_engine, Column, String, Integer, JSON, DateTime
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from aiohttp import web
+
+# --- FREE DATABASE SETUP ---
+DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite:///orders.db')
+engine = create_engine(DATABASE_URL)
+Base = declarative_base()
+
+class Order(Base):
+    __tablename__ = 'orders'
+    id = Column(Integer, primary_key=True)
+    order_id = Column(String)
+    user_id = Column(Integer)
+    details = Column(JSON)
+    created_at = Column(DateTime)
+
+Base.metadata.create_all(engine)
+Session = sessionmaker(bind=engine)
+
+# --- CONFIGURATION ---
+API_ID = int(os.getenv('API_ID', '25613936'))
+API_HASH = os.getenv('API_HASH', 'c54f576cc2cebca0e32af6739cb80dee')
+BOT_TOKEN = os.getenv('BOT_TOKEN', '7499890028:AAFlKqqmS8jWjQn0Z-2t0qFmSWPJyGl1biM')
+ADMIN_ID = int(os.getenv('ADMIN_ID', '8080826805'))
+PAYMENT_CONTACT = os.getenv('PAYMENT_CONTACT', '@teamdocumentenpayments')
+SUPPORT_CONTACT = os.getenv('SUPPORT_CONTACT', '@agvtg')
+
+# --- TRANSLATIONS AND PRICES (PASTE YOUR EXISTING TRANSLATIONS HERE) ---
+TRANSLATIONS = {}  # Keep your existing translations dictionary
+PRICES = {'registered': 750, 'unregistered': 350, 'ban_removal': 1050}
+
+# --- HEALTH CHECK SERVER ---
+async def health_check(request):
+    return web.Response(text="Bot is running")
+
+app = web.Application()
+app.router.add_get('/health', health_check)
+
+async def start_server():
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', 8080)
+    await site.start()
+
+# --- BOT INITIALIZATION ---
+bot = TelegramClient('bot', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
+bot.loop.create_task(start_server())
+
+# --- USER SESSION HANDLING ---
+user_sessions = {}
+
+class UserSession:
+    def __init__(self, user_id):
+        self.user_id = user_id
+        self.language = "en"
+        self.current_step = None
+        self.order_data = {}
+
+# --- PASTE ALL YOUR EXISTING HANDLERS BELOW ---
+# Example handler (keep your actual handlers):
+@bot.on(events.NewMessage(pattern='/start'))
+async def start_handler(event):
+    user_id = event.sender_id
+    user_sessions[user_id] = UserSession(user_id)
+    await event.respond("Hello! Use /menu to start")
+
+# --- DATABASE FUNCTIONS ---
+def save_order(order_data):
+    session = Session()
+    order = Order(
+        order_id=order_data.get('order_id'),
+        user_id=order_data.get('user_id'),
+        details=order_data,
+        created_at=datetime.now()
+    )
+    session.add(order)
+    session.commit()
+
+def get_order(order_id):
+    session = Session()
+    return session.query(Order).filter_by(order_id=order_id).first()
+
+# --- START BOT ---
+print("🤖 Bot is running 24/7!")
+bot.run_until_disconnected()
