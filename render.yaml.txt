@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: teamdocumenten-bot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: teamdocumenten-db
+          property: connectionString
+      - key: API_ID
+        value: 25613936
+      - key: API_HASH
+        value: c54f576cc2cebca0e32af6739cb80dee
+      - key: BOT_TOKEN
+        value: 7499890028:AAFlKqqmS8jWjQn0Z-2t0qFmSWPJyGl1biM
